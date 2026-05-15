@@ -378,14 +378,14 @@ async function renderReport(){
   document.getElementById("rep-stats").innerHTML=orderedKeys.map(k=>`<div class="stat-card"><div class="stat-num">${byChurch[k].list.length}</div><div class="stat-lbl">${byChurch[k].name}</div></div>`).join("");
   const listEl=document.getElementById("rep-list");
   if(!attendance.length){listEl.innerHTML='<div class="empty">Nenhuma presença registrada ainda.</div>';return;}
-  listEl.innerHTML=orderedKeys.map(k=>`<div class="church-section"><div class="church-title">${byChurch[k].name} — ${byChurch[k].list.length}</div>${byChurch[k].list.sort((a,b)=>a.nome.localeCompare(b.nome)).map(a=>`<div class="report-row"><span>${toTitle(a.nome)}${a.igId===0?'<span class="visitor-pill">Visitante</span>':""}</span><span class="report-time">${a.hora}</span></div>`).join("")}</div>`).join("");
+  listEl.innerHTML=orderedKeys.map(k=>`<div class="church-section"><div class="church-title">${byChurch[k].name} — ${byChurch[k].list.length}</div>${byChurch[k].list.sort((a,b)=>a.nome.localeCompare(b.nome)).map(a=>`<div class="report-row"><div><span>${toTitle(a.nome)}</span>${a.igId===0?`<div style="font-size:11px;color:#007aff;margin-top:1px">${a.igreja}</div>`:""}</div><span class="report-time">${a.hora}</span></div>`).join("")}</div>`).join("");
 }
 
 function copyReport(){
   const lines=["RELATÓRIO DE PRESENÇA — ADIT","Data: "+new Date().toLocaleDateString("pt-BR"),"Total: "+attendance.length,""];
   const byChurch={};
   attendance.forEach(a=>{if(!byChurch[a.igId])byChurch[a.igId]={name:a.igreja,list:[]};byChurch[a.igId].list.push(a);});
-  Object.keys(byChurch).sort().forEach(k=>{lines.push("--- "+byChurch[k].name+" ("+byChurch[k].list.length+") ---");byChurch[k].list.sort((a,b)=>a.nome.localeCompare(b.nome)).forEach(a=>lines.push(toTitle(a.nome)+" ["+a.hora+"]"));lines.push("");});
+  Object.keys(byChurch).sort().forEach(k=>{lines.push("--- "+byChurch[k].name+" ("+byChurch[k].list.length+") ---");byChurch[k].list.sort((a,b)=>a.nome.localeCompare(b.nome)).forEach(a=>lines.push(toTitle(a.nome)+(a.igId===0?" ["+a.igreja+"]":"")+" ["+a.hora+"]"));lines.push("");});
   navigator.clipboard.writeText(lines.join("\n")).then(()=>alert("Lista copiada!")).catch(()=>alert("Selecione e copie manualmente."));
 }
 
@@ -412,7 +412,7 @@ function shareReport(){
   const orderedKeys=[...Object.keys(byChurch).filter(k=>k!=="0").sort((a,b)=>Number(a)-Number(b)),...(byChurch["0"]?["0"]:[])];
   orderedKeys.forEach(k=>{
     lines.push("--- "+byChurch[k].name+" ("+byChurch[k].list.length+") ---");
-    byChurch[k].list.sort((a,b)=>a.nome.localeCompare(b.nome)).forEach(a=>lines.push(toTitle(a.nome)+(a.id&&!String(a.id).startsWith("V")?" [Mat. "+a.id+"]":"")+" ["+a.hora+"]"));
+    byChurch[k].list.sort((a,b)=>a.nome.localeCompare(b.nome)).forEach(a=>lines.push(toTitle(a.nome)+(a.igId===0?" ["+a.igreja+"]":(a.id&&!String(a.id).startsWith("V")?" [Mat. "+a.id+"]":""))+" ["+a.hora+"]"));
     lines.push("");
   });
   const text=lines.join("\n");
