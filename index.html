@@ -205,6 +205,7 @@ input[type=text]:focus{border-color:#007aff;background:#fff}
       <div class="stat-grid" id="rep-stats"></div>
       <div id="rep-list"></div>
       <button class="clear-btn" onclick="clearAttendance()">Limpar presenças do dia</button>
+      <button class="btn btn-secondary" style="margin-top:8px" onclick="backToSearch()">Voltar ao check-in</button>
     </div>
   </div>
 </div>
@@ -378,14 +379,32 @@ async function renderReport(){
   document.getElementById("rep-stats").innerHTML=orderedKeys.map(k=>`<div class="stat-card"><div class="stat-num">${byChurch[k].list.length}</div><div class="stat-lbl">${byChurch[k].name}</div></div>`).join("");
   const listEl=document.getElementById("rep-list");
   if(!attendance.length){listEl.innerHTML='<div class="empty">Nenhuma presença registrada ainda.</div>';return;}
-  listEl.innerHTML=orderedKeys.map(k=>`<div class="church-section"><div class="church-title">${byChurch[k].name} — ${byChurch[k].list.length}</div>${byChurch[k].list.sort((a,b)=>a.nome.localeCompare(b.nome)).map(a=>`<div class="report-row"><div><span>${toTitle(a.nome)}</span>${a.cargo==="Visitante"?`<div style="font-size:11px;color:#007aff;font-weight:500;margin-top:2px">${a.igreja||""}</div>`:""}</div><span class="report-time">${a.hora}</span></div>`).join("")}</div>`).join("");
+  listEl.innerHTML=orderedKeys.map(k=>`<div class="church-section"><div class="church-title">${byChurch[k].name} — ${byChurch[k].list.length}</div>${byChurch[k].list.sort((a,b)=>a.nome.localeCompare(b.nome)).map(a=>a.cargo==="Visitante"?`<div class="report-row" style="flex-direction:column;align-items:flex-start;gap:2px;padding:10px 2px">
+              <div style="display:flex;justify-content:space-between;width:100%">
+                <span style="font-weight:600;color:#1d1d1f">${toTitle(a.nome)}</span>
+                <span class="report-time">${a.hora}</span>
+              </div>
+              <div style="font-size:12px;color:#007aff;font-weight:500">${a.igreja||""}</div>
+              ${a.cpf?`<div style="font-size:12px;color:#6e6e73">CPF: ${a.cpf}</div>`:""}
+              ${a.email?`<div style="font-size:12px;color:#6e6e73">E-mail: ${a.email}</div>`:""}
+            </div>`
+            :`<div class="report-row"><span>${toTitle(a.nome)}</span><span class="report-time">${a.hora}</span></div>`).join("")}</div>`).join("");
 }
 
 function copyReport(){
   const lines=["RELATÓRIO DE PRESENÇA — ADIT","Data: "+new Date().toLocaleDateString("pt-BR"),"Total: "+attendance.length,""];
   const byChurch={};
   attendance.forEach(a=>{if(!byChurch[a.igId])byChurch[a.igId]={name:a.igreja,list:[]};byChurch[a.igId].list.push(a);});
-  Object.keys(byChurch).sort().forEach(k=>{lines.push("--- "+byChurch[k].name+" ("+byChurch[k].list.length+") ---");byChurch[k].list.sort((a,b)=>a.nome.localeCompare(b.nome)).forEach(a=>lines.push(toTitle(a.nome)+(a.cargo==="Visitante"?" [Visitante - "+a.igreja+"]":"")+" ["+a.hora+"]"));lines.push("");});
+  Object.keys(byChurch).sort().forEach(k=>{lines.push("--- "+byChurch[k].name+" ("+byChurch[k].list.length+") ---");byChurch[k].list.sort((a,b)=>a.nome.localeCompare(b.nome)).forEach(a=>{
+      if(a.cargo==="Visitante"){
+        lines.push(toTitle(a.nome)+" [Visitante] ["+a.hora+"]");
+        lines.push("  Igreja: "+(a.igreja||"-"));
+        if(a.cpf) lines.push("  CPF: "+a.cpf);
+        if(a.email) lines.push("  E-mail: "+a.email);
+      } else {
+        lines.push(toTitle(a.nome)+" ["+a.hora+"]");
+      }
+    });lines.push("");});
   navigator.clipboard.writeText(lines.join("\n")).then(()=>alert("Lista copiada!")).catch(()=>alert("Selecione e copie manualmente."));
 }
 
