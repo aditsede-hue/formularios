@@ -227,18 +227,31 @@ const MEMBERS=RAW.map(([id,nome,cargo,ig])=>({id,nome,cargo,igreja:IGREJAS[ig],i
 const norm=s=>s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
 const toTitle=s=>s.toLowerCase().replace(/(?:^|\s)\S/g,c=>c.toUpperCase());
 const initials=n=>n.trim().split(" ").filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join("");
-const storageKey="adit_checkin_"+new Date().toISOString().split("T")[0];
+const DB_URL="https://adit-checkin-default-rtdb.firebaseio.com";
+const dateKey=new Date().toISOString().split("T")[0];
 let attendance=[];
 let selectedMember=null;
 let countdownInterval=null;
 
 document.getElementById("date-sub").textContent=new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
 
-function loadAttendance(){
-  try{const d=localStorage.getItem(storageKey);if(d)attendance=JSON.parse(d);}catch(e){attendance=[];}
+async function loadAttendance(){
+  try{
+    const r=await fetch(DB_URL+"/presencas/"+dateKey+".json");
+    const data=await r.json();
+    attendance=(data&&typeof data==="object")?Object.values(data):[];
+  }catch(e){attendance=[];}
 }
-function saveAttendance(){
-  try{localStorage.setItem(storageKey,JSON.stringify(attendance));}catch(e){}
+async function saveAttendance(){
+  try{
+    const obj={};
+    attendance.forEach(a=>{obj["k_"+String(a.id).replace(/[^a-zA-Z0-9]/g,"_")+"_"+a.ts]=a;});
+    await fetch(DB_URL+"/presencas/"+dateKey+".json",{
+      method:"PUT",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(obj)
+    });
+  }catch(e){}
 }
 
 const ADMIN_PIN="1234";
@@ -299,11 +312,11 @@ function selectMember(id){
   switchView("confirm");
 }
 
-function confirmPresence(){
+async function confirmPresence(){
   if(!selectedMember||attendance.some(a=>a.id===selectedMember.id))return;
   const entry={...selectedMember,hora:new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}),ts:Date.now()};
   attendance.push(entry);
-  saveAttendance();
+  await saveAttendance();
   document.getElementById("succ-name").textContent=toTitle(selectedMember.nome);
   switchView("success");
   let secs=5;
@@ -330,7 +343,7 @@ function backToSearch(){
   switchView("checkin");
 }
 
-function confirmVisitor(){
+async function confirmVisitor(){
   const nome=document.getElementById("visitor-name").value.trim();
   const cpf=document.getElementById("visitor-cpf").value.trim();
   const email=document.getElementById("visitor-email").value.trim();
@@ -339,7 +352,7 @@ function confirmVisitor(){
   if(!church){alert("Selecione a igreja.");return;}
   const entry={id:"V"+Date.now(),nome:nome.toUpperCase(),cargo:"Visitante",igreja:church,igId:0,cpf,email,hora:new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}),ts:Date.now()};
   attendance.push(entry);
-  saveAttendance();
+  await saveAttendance();
   document.getElementById("succ-name").textContent=toTitle(nome);
   switchView("success");
   let secs=5;
@@ -349,7 +362,8 @@ function confirmVisitor(){
   countdownInterval=setInterval(()=>{secs--;if(secs<=0){clearInterval(countdownInterval);backToSearch();}else ct.textContent=`Próxima pessoa em ${secs}s`;},1000);
 }
 
-function renderReport(){
+async function renderReport(){
+  await loadAttendance();
   document.getElementById("rep-count").textContent=attendance.length;
   const byChurch={};
   attendance.forEach(a=>{
@@ -375,8 +389,12 @@ function copyReport(){
   navigator.clipboard.writeText(lines.join("\n")).then(()=>alert("Lista copiada!")).catch(()=>alert("Selecione e copie manualmente."));
 }
 
-function clearAttendance(){
-  if(confirm("Tem certeza que deseja limpar todas as presenças de hoje?")){attendance=[];saveAttendance();renderReport();}
+async function clearAttendance(){
+  if(confirm("Tem certeza que deseja limpar todas as presenças de hoje?")){
+    attendance=[];
+    await fetch(DB_URL+"/presencas/"+dateKey+".json",{method:"DELETE"});
+    renderReport();
+  }
 }
 
 function printReport(){
